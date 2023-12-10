@@ -25,12 +25,15 @@ except Exception as e:
 
 # Year and Month Selector
 years = sorted(set(historical_data_industrial['Date'].dt.year.unique()) | set(historical_data_commercial['Date'].dt.year.unique()), reverse=True)
-months = list(range(1, 13))
+
+# Mapping month numbers to names
+month_names = {1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
+               7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'}
 
 start_year = st.selectbox("Select Start Year", years)
-start_month = st.selectbox("Select Start Month", months)
+start_month = st.selectbox("Select Start Month", list(month_names.keys()), format_func=lambda x: month_names[x])
 end_year = st.selectbox("Select End Year", years)
-end_month = st.selectbox("Select End Month", months)
+end_month = st.selectbox("Select End Month", list(month_names.keys()), format_func=lambda x: month_names[x])
 
 start_date = datetime.date(start_year, start_month, 1)
 end_day = calendar.monthrange(end_year, end_month)[1]
@@ -80,10 +83,12 @@ if st.button('Predict'):
             industrial_predictions = industrial_response.json()
             commercial_predictions = commercial_response.json()
 
-            # Check if 'Results' in the response and if it contains 'forecast' and 'index'
             if 'Results' in industrial_predictions and 'Results' in commercial_predictions:
                 ind_forecast = industrial_predictions['Results']['forecast']
                 com_forecast = commercial_predictions['Results']['forecast']
+                ind_intervals = industrial_predictions['Results']['prediction_interval']
+                com_intervals = commercial_predictions['Results']['prediction_interval']
+
 
                 # Plotting the forecast
                 fig, ax = plt.subplots(2, 1, figsize=(10, 8))
@@ -106,11 +111,16 @@ if st.button('Predict'):
 
                 st.pyplot(fig)
 
-                # Combine forecasts into a DataFrame
+                # Formatting dates for the DataFrame
+                formatted_dates_df = pd.to_datetime(formatted_dates).strftime('%B %Y')
+
+                # Combine forecasts and confidence intervals into a DataFrame
                 combined_predictions_df = pd.DataFrame({
-                    'Date': pd.to_datetime(formatted_dates),
+                    'Date': formatted_dates_df,
                     'Industrial Forecast': ind_forecast,
-                    'Commercial Forecast': com_forecast
+                    'Industrial Confidence Interval': ind_intervals,
+                    'Commercial Forecast': com_forecast,
+                    'Commercial Confidence Interval': com_intervals
                 })
                 st.write("Forecasted Energy Consumption:")
                 st.dataframe(combined_predictions_df)
